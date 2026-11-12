@@ -150,6 +150,7 @@ tfoot td { font-weight: 700; border-bottom: 0; }
     </div>
     <div class="asof">
       <div id="asof"></div>
+      <div id="src"></div>
       <button class="themebtn" id="themebtn" type="button" style="margin-top:8px">Toggle theme</button>
     </div>
   </header>
@@ -234,6 +235,110 @@ var SNAP = {
   smoke: 545, disabled: 1037, cat1: 774, cat2: 249
 };
 /* ===== end of DATA ===== */
+
+/* ===== SHEET SETTINGS: paste your published Google Sheets CSV links between the quotes. Leave empty to use the saved data above. ===== */
+var SHEET = {
+  monthly:  "",   /* https://docs.google.com/spreadsheets/d/e/2PACX-1vQGL9jM4K1yVtuVaTdkNkaIlIWwO0xwBg8-byKCWiiy3fhCz88fVqInnJq1C_ZbLKIcIFiXsLeXT4ao/pub?gid=52494521&single=true&output=csv */
+  snapshot: "",   /* https://docs.google.com/spreadsheets/d/e/2PACX-1vQGL9jM4K1yVtuVaTdkNkaIlIWwO0xwBg8-byKCWiiy3fhCz88fVqInnJq1C_ZbLKIcIFiXsLeXT4ao/pub?gid=1092640802&single=true&output=csv */
+  startYear: 2025 /* year of the first row, used only when the Month column has no year */
+};
+/* ===== end of SHEET SETTINGS ===== */
+
+/* SHEETS-BEGIN */
+var MN3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var COLMAP = [
+  ["adp", /^adp\b|driving/i], ["kickoff", /kick/i], ["light", /light/i], ["notam", /notam/i],
+  ["permits", /work\s*permit/i], ["avp", /^avp\b|vehicle/i], ["hot", /hot/i], ["gse", /gse/i]
+];
+function parseCSV(t){
+  var rows = [], row = [], cur = "", q = false, i, c;
+  for (i = 0; i < t.length; i++) {
+    c = t.charAt(i);
+    if (q) { if (c === '"') { if (t.charAt(i+1) === '"') { cur += '"'; i++; } else { q = false; } } else { cur += c; } }
+    else if (c === '"') { q = true; }
+    else if (c === ",") { row.push(cur); cur = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && t.charAt(i+1) === "\n") i++; row.push(cur); cur = ""; rows.push(row); row = []; }
+    else { cur += c; }
+  }
+  if (cur !== "" || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+function toNum(s){
+  if (s === undefined || s === null) return null;
+  s = String(s).replace(/[,\s]/g, "");
+  if (s === "") return null;
+  var n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+function parseMonthly(rows, startYear){
+  if (!rows.length) throw new Error("empty");
+  var head = rows[0], cols = [], used = {};
+  head.forEach(function(h, ci){
+    if (ci === 0) return;
+    for (var j = 0; j < COLMAP.length; j++) {
+      if (!used[COLMAP[j][0]] && COLMAP[j][1].test(h)) { cols.push([ci, COLMAP[j][0]]); used[COLMAP[j][0]] = 1; break; }
+    }
+  });
+  if (!cols.length) throw new Error("no columns");
+  var months = [], data = {}, y = startYear, prev = -1;
+  cols.forEach(function(c){ data[c[1]] = []; });
+  COLMAP.forEach(function(c){ if (!data[c[0]]) data[c[0]] = []; });
+  rows.slice(1).forEach(function(r){
+    var m = /^\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.exec(r[0] || "");
+    if (!m) return;
+    var mi = MN3.map(function(x){return x.toLowerCase();}).indexOf(m[1].toLowerCase());
+    var ym = /(20\d\d)/.exec(r[0]);
+    if (ym) { y = +ym[1]; } else if (prev >= 0 && mi < prev) { y++; }
+    prev = mi;
+    months.push({ m: MN3[mi], y: y });
+    COLMAP.forEach(function(c){ data[c[0]].push(null); });
+    cols.forEach(function(c){ data[c[1]][months.length-1] = toNum(r[c[0]]); });
+  });
+  if (!months.length) throw new Error("no months");
+  return { months: months, data: data };
+}
+function parseSnapshot(rows, base){
+  var out = JSON.parse(JSON.stringify(base)), asOf = null;
+  rows.forEach(function(r){
+    var l = String(r[0] || ""), raw = r[1], n = toNum(raw);
+    if (/date|as of|updated/i.test(l)) { if (String(raw||"").trim()) asOf = String(raw).trim(); return; }
+    if (n === null) return;
+    if (/airside/i.test(l)) out.permits.airside = n;
+    else if (/landside/i.test(l)) out.permits.landside = n;
+    else if (/approved/i.test(l)) out.permits.approved = n;
+    else if (/expired/i.test(l)) out.permits.expired = n;
+    else if (/active/i.test(l)) out.permits.active = n;
+    else if (/review/i.test(l)) out.permits.review = n;
+    else if (/incomplete/i.test(l)) out.permits.incomplete = n;
+    else if (/disabled/i.test(l)) out.disabled = n;
+    else if (/smoke/i.test(l)) out.smoke = n;
+    else if (/cat(egory)?\s*1/i.test(l)) out.cat1 = n;
+    else if (/cat(egory)?\s*2/i.test(l)) out.cat2 = n;
+  });
+  return { snap: out, asOf: asOf };
+}
+/* SHEETS-END */
+
+function fetchText(u){
+  var url = u + (u.indexOf("?") >= 0 ? "&" : "?") + "_=" + Date.now();
+  return fetch(url, { cache: "no-store" }).then(function(r){ if (!r.ok) throw new Error(String(r.status)); return r.text(); });
+}
+function loadSheets(){
+  if (!SHEET.monthly && !SHEET.snapshot) return Promise.resolve();
+  var jobs = [];
+  if (SHEET.monthly) jobs.push(fetchText(SHEET.monthly).then(function(t){
+    var p = parseMonthly(parseCSV(t), SHEET.startYear);
+    MONTHS = p.months; M = p.data; N = MONTHS.length; PERIOD = mfull(0) + " to " + mfull(N-1);
+  }));
+  if (SHEET.snapshot) jobs.push(fetchText(SHEET.snapshot).then(function(t){
+    var p = parseSnapshot(parseCSV(t), SNAP);
+    SNAP = p.snap; if (p.asOf) REPORT.asOf = p.asOf;
+  }));
+  return Promise.all(jobs).then(
+    function(){ $("src").textContent = "Live from the monthly sheet"; },
+    function(){ $("src").textContent = "Showing saved data (could not reach the sheet)"; }
+  );
+}
 
 var MONTHFULL = {Sep:"September",Oct:"October",Nov:"November",Dec:"December",Jan:"January",Feb:"February",Mar:"March",Apr:"April",May:"May",Jun:"June",Jul:"July",Aug:"August"};
 var DEFS = [
@@ -455,6 +560,7 @@ $("themebtn").addEventListener("click", function(){
 
 sel = fromHash();
 render();
+loadSheets().then(function(){ sel = fromHash(); $("months").innerHTML = ""; render(); });
 </script>
 
 </html>

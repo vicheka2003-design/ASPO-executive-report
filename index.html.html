@@ -527,14 +527,14 @@ function renderSmoke(){
     { n:"Unauthorized", v:T.unauthorized || 0, c:"var(--s2)" },
     { n:"Microwave", v:T.microwave || 0, c:"var(--s3)" }
   ];
-  var other = tot - parts.reduce(function(a,p){return a+p.v;}, 0);
-  if (other > 0) parts.unshift({ n:"Other / not listed", v:other, c:"var(--s4)" });
-  var r = 54, C = 2*Math.PI*r, acc = 0, rings = "";
-  parts.forEach(function(p){
-    var len = p.v/tot*C, dr = Math.max(len - 2, 1.5);
-    rings += '<circle class="ring" cx="75" cy="75" r="'+r+'" transform="rotate(-90 75 75)" style="stroke:'+p.c+'" stroke-dasharray="'+dr.toFixed(2)+' '+(C-dr).toFixed(2)+'" stroke-dashoffset="'+(-(acc+1)).toFixed(2)+'"><title>'+p.n+': '+fmt(p.v)+'</title></circle>';
-    acc += len;
-  });
+  //var other = tot - parts.reduce(function(a,p){return a+p.v;}, 0);
+  //if (other > 0) parts.unshift({ n:"Other / not listed", v:other, c:"var(--s4)" });
+ // var r = 54, C = 2*Math.PI*r, acc = 0, rings = "";
+  //parts.forEach(function(p){
+    //var len = p.v/tot*C, dr = Math.max(len - 2, 1.5);
+    //rings += '<circle class="ring" cx="75" cy="75" r="'+r+'" transform="rotate(-90 75 75)" style="stroke:'+p.c+'" stroke-dasharray="'+dr.toFixed(2)+' '+(C-dr).toFixed(2)+'" stroke-dashoffset="'+(-(acc+1)).toFixed(2)+'"><title>'+p.n+': '+fmt(p.v)+'</title></circle>';
+    //acc += len;
+ // })
   var legend = parts.map(function(p){
     var pc = p.v/tot*100;
     return '<div><span><i style="background:'+p.c+'"></i>'+p.n+'</span><span><b>'+fmt(p.v)+'</b><em>'+(pc < 1 ? pc.toFixed(1) : pc.toFixed(0))+'%</em></span></div>';

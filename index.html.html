@@ -200,8 +200,8 @@ tfoot td { font-weight: 700; border-bottom: 0; }
         <div class="card">
           <h3 class="h3i" id="h3cat"></h3>
           <div class="pair">
-            <div><div class="cardlabel">Cat 1</div><div class="big" id="cat1"></div></div>
-            <div><div class="cardlabel">Cat 2</div><div class="big" id="cat2"></div></div>
+            <div><div class="cardlabel">Category 1</div><div class="big" id="cat1"></div></div>
+            <div><div class="cardlabel">Category 2</div><div class="big" id="cat2"></div></div>
           </div>
         </div>
       </div>
@@ -238,8 +238,8 @@ var SNAP = {
 
 /* ===== SHEET SETTINGS: paste your published Google Sheets CSV links between the quotes. Leave empty to use the saved data above. ===== */
 var SHEET = {
-  monthly:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGL9jM4K1yVtuVaTdkNkaIlIWwO0xwBg8-byKCWiiy3fhCz88fVqInnJq1C_ZbLKIcIFiXsLeXT4ao/pub?gid=52494521&single=true&output=csv", 
-  snapshot: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGL9jM4K1yVtuVaTdkNkaIlIWwO0xwBg8-byKCWiiy3fhCz88fVqInnJq1C_ZbLKIcIFiXsLeXT4ao/pub?gid=1092640802&single=true&output=csv",
+  monthly:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGL9jM4K1yVtuVaTdkNkaIlIWwO0xwBg8-byKCWiiy3fhCz88fVqInnJq1C_ZbLKIcIFiXsLeXT4ao/pub?gid=52494521&single=true&output=csv",   /* link for the Monthly tab */
+  snapshot: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGL9jM4K1yVtuVaTdkNkaIlIWwO0xwBg8-byKCWiiy3fhCz88fVqInnJq1C_ZbLKIcIFiXsLeXT4ao/pub?gid=1092640802&single=true&output=csv",   /* link for the Snapshot tab (optional) */
   startYear: 2025 /* year of the first row, used only when the Month column has no year */
 };
 /* ===== end of SHEET SETTINGS ===== */
@@ -247,9 +247,19 @@ var SHEET = {
 /* SHEETS-BEGIN */
 var MN3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var COLMAP = [
-  ["adp", /^adp\b|driving/i], ["kickoff", /kick/i], ["light", /light/i], ["notam", /notam/i],
-  ["permits", /work\s*permit/i], ["avp", /^avp\b|vehicle/i], ["hot", /hot/i], ["gse", /gse/i]
+  ["adp", /\badp\b|driving/i], ["kickoff", /kick/i], ["light", /light/i], ["notam", /notam/i],
+  ["permits", /work\s*permit/i], ["avp", /\bavp\b|vehicle/i], ["hot", /hot/i], ["gse", /\bgse\b/i]
 ];
+var MONTH_RE = /^\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i;
+function matchCols(row){
+  var cols = [], used = {};
+  row.forEach(function(h, ci){
+    for (var j = 0; j < COLMAP.length; j++) {
+      if (!used[COLMAP[j][0]] && COLMAP[j][1].test(String(h))) { cols.push([ci, COLMAP[j][0]]); used[COLMAP[j][0]] = 1; break; }
+    }
+  });
+  return cols;
+}
 function parseCSV(t){
   var rows = [], row = [], cur = "", q = false, i, c;
   for (i = 0; i < t.length; i++) {
@@ -272,22 +282,26 @@ function toNum(s){
 }
 function parseMonthly(rows, startYear){
   if (!rows.length) throw new Error("empty");
-  var head = rows[0], cols = [], used = {};
-  head.forEach(function(h, ci){
-    if (ci === 0) return;
-    for (var j = 0; j < COLMAP.length; j++) {
-      if (!used[COLMAP[j][0]] && COLMAP[j][1].test(h)) { cols.push([ci, COLMAP[j][0]]); used[COLMAP[j][0]] = 1; break; }
+  var hi = -1, cols = [], k, found;
+  [2, 1].forEach(function(need){
+    for (k = 0; hi < 0 && k < Math.min(rows.length, 15); k++) {
+      found = matchCols(rows[k]);
+      if (found.length >= need) { hi = k; cols = found; }
     }
   });
-  if (!cols.length) throw new Error("no columns");
+  if (hi < 0) throw new Error("no columns");
+  var body = rows.slice(hi + 1), mc = 0, best = -1, cc, cnt;
+  for (cc = 0; cc < 4; cc++) {
+    cnt = body.filter(function(r){ return MONTH_RE.test(r[cc] || ""); }).length;
+    if (cnt > best) { best = cnt; mc = cc; }
+  }
   var months = [], data = {}, y = startYear, prev = -1;
-  cols.forEach(function(c){ data[c[1]] = []; });
-  COLMAP.forEach(function(c){ if (!data[c[0]]) data[c[0]] = []; });
-  rows.slice(1).forEach(function(r){
-    var m = /^\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.exec(r[0] || "");
+  COLMAP.forEach(function(c){ data[c[0]] = []; });
+  body.forEach(function(r){
+    var m = MONTH_RE.exec(r[mc] || "");
     if (!m) return;
     var mi = MN3.map(function(x){return x.toLowerCase();}).indexOf(m[1].toLowerCase());
-    var ym = /(20\d\d)/.exec(r[0]);
+    var ym = /(20\d\d)/.exec(r[mc]);
     if (ym) { y = +ym[1]; } else if (prev >= 0 && mi < prev) { y++; }
     prev = mi;
     months.push({ m: MN3[mi], y: y });
@@ -325,19 +339,25 @@ function fetchText(u){
 }
 function loadSheets(){
   if (!SHEET.monthly && !SHEET.snapshot) return Promise.resolve();
-  var jobs = [];
+  var jobs = [], problems = [];
+  function why(e){
+    var m = e && e.message;
+    if (m === "no columns") return "reached the tab but found no column names it recognises (ADP, Kickoff Meeting, Light Work, NOTAM, AVP, WORK PERMIT, HOTWORK, GSE) in the first 15 rows.";
+    if (m === "no months") return "reached the tab but found no rows that start with a month name.";
+    if (m === "empty") return "the tab is empty.";
+    return "could not reach the sheet (" + m + "). Check the link ends in output=csv.";
+  }
   if (SHEET.monthly) jobs.push(fetchText(SHEET.monthly).then(function(t){
     var p = parseMonthly(parseCSV(t), SHEET.startYear);
     MONTHS = p.months; M = p.data; N = MONTHS.length; PERIOD = mfull(0) + " to " + mfull(N-1);
-  }));
+  }).catch(function(e){ problems.push("Monthly tab: " + why(e)); }));
   if (SHEET.snapshot) jobs.push(fetchText(SHEET.snapshot).then(function(t){
     var p = parseSnapshot(parseCSV(t), SNAP);
     SNAP = p.snap; if (p.asOf) REPORT.asOf = p.asOf;
-  }));
-  return Promise.all(jobs).then(
-    function(){ $("src").textContent = "Live from the monthly sheet"; },
-    function(){ $("src").textContent = "Showing saved data (could not reach the sheet)"; }
-  );
+  }).catch(function(e){ problems.push("Snapshot tab: " + why(e)); }));
+  return Promise.all(jobs).then(function(){
+    $("src").textContent = problems.length ? "Showing saved data. " + problems.join(" ") : "Live from the sheet";
+  });
 }
 
 var MONTHFULL = {Sep:"September",Oct:"October",Nov:"November",Dec:"December",Jan:"January",Feb:"February",Mar:"March",Apr:"April",May:"May",Jun:"June",Jul:"July",Aug:"August"};

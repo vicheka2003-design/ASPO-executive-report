@@ -22,6 +22,7 @@
   --warn: #b7791f;
   --crit: #c0392b;
   --neutral-bar: #b9b0a8;
+  --s1: #e8590c; --s2: #2c6fbb; --s3: #1f8a7a; --s4: #b9b0a8;
   --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
   --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
 }
@@ -29,14 +30,14 @@
   :root:not([data-theme="light"]) {
     --bg: #17120f; --surface: #221b17; --surface-2: #2c241f; --ink: #f4eee9; --ink-2: #b3a79e;
     --line: #3a302a; --accent: #ff7a2e; --accent-soft: #4a2a17; --accent-ink: #1b1109;
-    --good: #5cc487; --warn: #e3b04b; --crit: #ee7566; --neutral-bar: #6d625a;
+    --good: #5cc487; --warn: #e3b04b; --crit: #ee7566; --neutral-bar: #6d625a; --s1: #ff7a2e; --s2: #6aa8ee; --s3: #4fc3ae; --s4: #6d625a;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #17120f; --surface: #221b17; --surface-2: #2c241f; --ink: #f4eee9; --ink-2: #b3a79e;
   --line: #3a302a; --accent: #ff7a2e; --accent-soft: #4a2a17; --accent-ink: #1b1109;
-  --good: #5cc487; --warn: #e3b04b; --crit: #ee7566; --neutral-bar: #6d625a;
+  --good: #5cc487; --warn: #e3b04b; --crit: #ee7566; --neutral-bar: #6d625a; --s1: #ff7a2e; --s2: #6aa8ee; --s3: #4fc3ae; --s4: #6d625a;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -135,6 +136,26 @@ tbody tr.sel td { background: var(--accent-soft); font-weight: 600; }
 tfoot td { font-weight: 700; border-bottom: 0; }
 .footer { color: var(--ink-2); font-size: 12px; }
 
+.donutwrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.donutwrap svg { width: 150px; height: 150px; flex: none; }
+.donutwrap .ring { fill: none; stroke-width: 24; }
+.donutwrap .ctr { fill: var(--ink); font-family: var(--font-display); font-weight: 700; font-size: 26px; text-anchor: middle; font-variant-numeric: tabular-nums; }
+.donutwrap .ctr2 { fill: var(--ink-2); font-size: 11px; text-anchor: middle; }
+.dleg { display: grid; gap: 7px; font-size: 13px; flex: 1; min-width: 160px; }
+.dleg div { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dleg i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 7px; }
+.dleg b { font-variant-numeric: tabular-nums; }
+.dleg em { font-style: normal; color: var(--ink-2); font-size: 12px; min-width: 44px; text-align: right; display: inline-block; font-variant-numeric: tabular-nums; }
+.donutnote { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--ink-2); }
+[hidden] { display: none !important; }
+body.loading .monthbar, body.loading main, body.loading #asof, body.loading #src,
+body.error .monthbar, body.error main, body.error #asof, body.error #src { display: none; }
+.status { min-height: 46vh; display: grid; place-content: center; justify-items: center; gap: 10px; text-align: center; padding: 40px 0; }
+.status p { margin: 0; color: var(--ink-2); max-width: 520px; overflow-wrap: anywhere; }
+.status p.bad { color: var(--ink); font-family: var(--font-display); font-size: 18px; font-weight: 700; }
+.spin { width: 36px; height: 36px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: sp .8s linear infinite; }
+@keyframes sp { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }
 .themebtn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { #tip { transition: none; } }
 @media (max-width: 520px) { .legend { grid-template-columns: 1fr; } .asof { text-align: left; } }
@@ -154,6 +175,8 @@ tfoot td { font-weight: 700; border-bottom: 0; }
       <button class="themebtn" id="themebtn" type="button" style="margin-top:8px">Toggle theme</button>
     </div>
   </header>
+
+  <div id="status" class="status" role="status" aria-live="polite" hidden></div>
 
   <div class="monthbar"><div class="months" id="months" role="group" aria-label="Choose a period"></div></div>
 
@@ -232,14 +255,14 @@ var M = {
 /* Snapshot from the Canva report, as of the date above (not split by month). */
 var SNAP = {
   permits: { approved:183, expired:155, active:28, airside:25, landside:3, review:5, incomplete:5 },
-  smoke: 545, disabled: 1037, cat1: 774, cat2: 249
+  smoke: 545, smokeTypes: { unauthorized: 5, microwave: 2, fault: 136 }, disabled: 1037, cat1: 774, cat2: 249
 };
 /* ===== end of DATA ===== */
 
 /* ===== SHEET SETTINGS: paste your published Google Sheets CSV links between the quotes. Leave empty to use the saved data above. ===== */
 var SHEET = {
   monthly:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGL9jM4K1yVtuVaTdkNkaIlIWwO0xwBg8-byKCWiiy3fhCz88fVqInnJq1C_ZbLKIcIFiXsLeXT4ao/pub?gid=52494521&single=true&output=csv",   /* link for the Monthly tab */
-  snapshot: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGL9jM4K1yVtuVaTdkNkaIlIWwO0xwBg8-byKCWiiy3fhCz88fVqInnJq1C_ZbLKIcIFiXsLeXT4ao/pub?gid=1760552113&single=true&output=csv",   /* link for the Snapshot tab (optional) */
+  snapshot: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGL9jM4K1yVtuVaTdkNkaIlIWwO0xwBg8-byKCWiiy3fhCz88fVqInnJq1C_ZbLKIcIFiXsLeXT4ao/pub?gid=1092640802&single=true&output=csv",   /* link for the Snapshot tab (optional) */
   startYear: 2025 /* year of the first row, used only when the Month column has no year */
 };
 /* ===== end of SHEET SETTINGS ===== */
@@ -280,6 +303,20 @@ function toNum(s){
   var n = parseFloat(s);
   return isNaN(n) ? null : n;
 }
+var NAME_IDX = { jan:0, ene:0, feb:1, mar:2, apr:3, abr:3, may:4, jun:5, jul:6, aug:7, ago:7, sep:8, set:8, oct:9, nov:10, dec:11, dic:11 };
+function monthOf(cell, strict){
+  var s = String(cell === undefined || cell === null ? "" : cell).replace(/^[\s'"]+|[\s'"]+$/g, ""), m;
+  if ((m = /^(jan|ene|feb|mar|apr|abr|may|jun|jul|aug|ago|sep|oct|nov|dec|dic)/i.exec(s))) return { mi: NAME_IDX[m[1].toLowerCase()], y: (/(20\d\d)/.exec(s) || [])[1] ? +/(20\d\d)/.exec(s)[1] : null };
+  if (strict) return null;
+  if ((m = /^(20\d\d)[-\/.](\d{1,2})/.exec(s)) && +m[2] >= 1 && +m[2] <= 12) return { mi: +m[2] - 1, y: +m[1] };
+  if ((m = /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/.exec(s))) {
+    var a = +m[1], d = +m[2], yy = +m[3], mo = a > 12 ? d : a;
+    if (mo >= 1 && mo <= 12) return { mi: mo - 1, y: yy < 100 ? 2000 + yy : yy };
+  }
+  if ((m = /^(\d{1,2})[\/.-](20\d\d)$/.exec(s)) && +m[1] >= 1 && +m[1] <= 12) return { mi: +m[1] - 1, y: +m[2] };
+  if (/^\d{1,2}$/.test(s) && +s >= 1 && +s <= 12) return { mi: +s - 1, y: null };
+  return null;
+}
 function parseMonthly(rows, startYear){
   if (!rows.length) throw new Error("empty");
   var hi = -1, cols = [], k, found;
@@ -290,25 +327,34 @@ function parseMonthly(rows, startYear){
     }
   });
   if (hi < 0) throw new Error("no columns");
-  var body = rows.slice(hi + 1), mc = 0, best = -1, cc, cnt;
-  for (cc = 0; cc < 4; cc++) {
-    cnt = body.filter(function(r){ return MONTH_RE.test(r[cc] || ""); }).length;
-    if (cnt > best) { best = cnt; mc = cc; }
+  var body = rows.slice(hi + 1), isData = {};
+  cols.forEach(function(c){ isData[c[0]] = 1; });
+  var mc = -1, strictMode = true, best = 0;
+  [true, false].forEach(function(strict){
+    if (mc >= 0) return;
+    for (var cc = 0; cc < 4; cc++) {
+      if (isData[cc]) continue;
+      var cnt = body.filter(function(r){ return monthOf(r[cc], strict); }).length;
+      if (cnt > best) { best = cnt; mc = cc; strictMode = strict; }
+    }
+  });
+  if (mc < 0) {
+    var err = new Error("no months");
+    err.sample = body.slice(0, 4).map(function(r){ return r.slice(0, 3).join(" | "); }).join("  //  ");
+    throw err;
   }
   var months = [], data = {}, y = startYear, prev = -1;
   COLMAP.forEach(function(c){ data[c[0]] = []; });
   body.forEach(function(r){
-    var m = MONTH_RE.exec(r[mc] || "");
+    var m = monthOf(r[mc], strictMode);
     if (!m) return;
-    var mi = MN3.map(function(x){return x.toLowerCase();}).indexOf(m[1].toLowerCase());
-    var ym = /(20\d\d)/.exec(r[mc]);
-    if (ym) { y = +ym[1]; } else if (prev >= 0 && mi < prev) { y++; }
+    var mi = m.mi;
+    if (m.y) { y = m.y; } else if (prev >= 0 && mi < prev) { y++; }
     prev = mi;
     months.push({ m: MN3[mi], y: y });
     COLMAP.forEach(function(c){ data[c[0]].push(null); });
     cols.forEach(function(c){ data[c[1]][months.length-1] = toNum(r[c[0]]); });
   });
-  if (!months.length) throw new Error("no months");
   return { months: months, data: data };
 }
 function parseSnapshot(rows, base){
@@ -317,7 +363,11 @@ function parseSnapshot(rows, base){
     var l = String(r[0] || ""), raw = r[1], n = toNum(raw);
     if (/date|as of|updated/i.test(l)) { if (String(raw||"").trim()) asOf = String(raw).trim(); return; }
     if (n === null) return;
-    if (/airside/i.test(l)) out.permits.airside = n;
+    out.smokeTypes = out.smokeTypes || {};
+    if (/unauthori[sz]ed/i.test(l)) out.smokeTypes.unauthorized = n;
+    else if (/microwave/i.test(l)) out.smokeTypes.microwave = n;
+    else if (/fault/i.test(l)) out.smokeTypes.fault = n;
+    else if (/airside/i.test(l)) out.permits.airside = n;
     else if (/landside/i.test(l)) out.permits.landside = n;
     else if (/approved/i.test(l)) out.permits.approved = n;
     else if (/expired/i.test(l)) out.permits.expired = n;
@@ -343,7 +393,7 @@ function loadSheets(){
   function why(e){
     var m = e && e.message;
     if (m === "no columns") return "reached the tab but found no column names it recognises (ADP, Kickoff Meeting, Light Work, NOTAM, AVP, WORK PERMIT, HOTWORK, GSE) in the first 15 rows.";
-    if (m === "no months") return "reached the tab but found no rows that start with a month name.";
+    if (m === "no months") return "reached the tab but found no month in the first columns. First rows seen: " + (e.sample || "(none)");
     if (m === "empty") return "the tab is empty.";
     return "could not reach the sheet (" + m + "). Check the link ends in output=csv.";
   }
@@ -355,9 +405,7 @@ function loadSheets(){
     var p = parseSnapshot(parseCSV(t), SNAP);
     SNAP = p.snap; if (p.asOf) REPORT.asOf = p.asOf;
   }).catch(function(e){ problems.push("Snapshot tab: " + why(e)); }));
-  return Promise.all(jobs).then(function(){
-    $("src").textContent = problems.length ? "Showing saved data. " + problems.join(" ") : "Live from the sheet";
-  });
+  return Promise.all(jobs).then(function(){ return problems; });
 }
 
 var MONTHFULL = {Sep:"September",Oct:"October",Nov:"November",Dec:"December",Jan:"January",Feb:"February",Mar:"March",Apr:"April",May:"May",Jun:"June",Jul:"July",Aug:"August"};
@@ -467,6 +515,35 @@ function renderMonths(){
   $("nextBtn").disabled = sel === N-1;
 }
 
+function renderSmoke(){
+  var T = SNAP.smokeTypes || {}, tot = SNAP.smoke;
+  var el = $("smokeDonut");
+  if (!el) {
+    el = document.createElement("div"); el.id = "smokeDonut"; el.className = "donutwrap";
+    $("disBig").closest(".pair").parentNode.appendChild(el);
+  }
+  var parts = [
+    { n:"Fault alarm", v:T.fault || 0, c:"var(--s1)" },
+    { n:"Unauthorized", v:T.unauthorized || 0, c:"var(--s2)" },
+    { n:"Microwave", v:T.microwave || 0, c:"var(--s3)" }
+  ];
+  var other = tot - parts.reduce(function(a,p){return a+p.v;}, 0);
+  if (other > 0) parts.unshift({ n:"Other / not listed", v:other, c:"var(--s4)" });
+  var r = 54, C = 2*Math.PI*r, acc = 0, rings = "";
+  parts.forEach(function(p){
+    var len = p.v/tot*C, dr = Math.max(len - 2, 1.5);
+    rings += '<circle class="ring" cx="75" cy="75" r="'+r+'" transform="rotate(-90 75 75)" style="stroke:'+p.c+'" stroke-dasharray="'+dr.toFixed(2)+' '+(C-dr).toFixed(2)+'" stroke-dashoffset="'+(-(acc+1)).toFixed(2)+'"><title>'+p.n+': '+fmt(p.v)+'</title></circle>';
+    acc += len;
+  });
+  var legend = parts.map(function(p){
+    var pc = p.v/tot*100;
+    return '<div><span><i style="background:'+p.c+'"></i>'+p.n+'</span><span><b>'+fmt(p.v)+'</b><em>'+(pc < 1 ? pc.toFixed(1) : pc.toFixed(0))+'%</em></span></div>';
+  }).join("");
+  el.innerHTML = '<svg viewBox="0 0 150 150" role="img" aria-label="Smoke alarms by type">' + rings +
+    '<text class="ctr" x="75" y="80">'+fmt(tot)+'</text><text class="ctr2" x="75" y="98">alarms</text></svg>' +
+    '<div class="dleg">'+legend+'</div>' +
+    (other > 0 ? '<p class="donutnote">Other is the total minus the three types listed in the report.</p>' : '');
+}
 function renderSnapshot(){
   var P = SNAP.permits;
   $("snapTitle").textContent = "Report snapshot as of " + REPORT.asOf;
@@ -487,6 +564,7 @@ function renderSnapshot(){
     return '<div><span><i style="background:'+p.c+'"></i>'+p.n+'</span><b>'+fmt(p.v)+'</b></div>'; }).join("");
   $("permNote").textContent = "Active permits: " + fmt(P.airside) + " airside, " + fmt(P.landside) + " landside.";
   $("smokeBig").textContent = fmt(SNAP.smoke);
+  renderSmoke();
   $("disBig").textContent = fmt(SNAP.disabled);
   $("cat1").textContent = fmt(SNAP.cat1);
   $("cat2").textContent = fmt(SNAP.cat2);
@@ -578,9 +656,29 @@ $("themebtn").addEventListener("click", function(){
   root.setAttribute("data-theme", dark ? "light" : "dark");
 });
 
-sel = fromHash();
-render();
-loadSheets().then(function(){ sel = fromHash(); $("months").innerHTML = ""; render(); });
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+function setState(st, msg){
+  document.body.className = st === "ok" ? "" : st;
+  var el = $("status");
+  if (st === "ok") { el.hidden = true; el.innerHTML = ""; return; }
+  el.hidden = false;
+  if (st === "loading") {
+    el.innerHTML = '<div class="spin" aria-hidden="true"></div><p>Loading the latest data from the sheet…</p>';
+  } else {
+    el.innerHTML = '<p class="bad">The latest data could not be loaded.</p><p>' + esc(msg) + '</p><button type="button" class="themebtn" id="retry">Try again</button>';
+    $("retry").onclick = start;
+  }
+}
+function start(){
+  if (!SHEET.monthly && !SHEET.snapshot) { sel = fromHash(); render(); return; }
+  setState("loading");
+  loadSheets().then(function(problems){
+    if (problems && problems.length) { setState("error", problems.join(" ")); return; }
+    sel = fromHash(); $("months").innerHTML = ""; setState("ok"); render();
+    $("src").textContent = "Live from the sheet";
+  });
+}
+start();
 </script>
 
 </html>

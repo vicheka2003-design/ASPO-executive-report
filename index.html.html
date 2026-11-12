@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>:root{color-scheme:light}html,body{margin:0}</style>
+<title>ASPO Executive Report</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: sticky month selector on top; monthly KPIs, airside permits, trend chart, month table, then a report-date snapshot. */
+:root {
+  --bg: #f7f5f3;
+  --surface: #ffffff;
+  --surface-2: #f1eeeb;
+  --ink: #1f1a17;
+  --ink-2: #5f5650;
+  --line: #e4dfda;
+  --accent: #e8590c;
+  --accent-soft: #fde3d3;
+  --accent-ink: #ffffff;
+  --good: #2f7d4f;
+  --warn: #b7791f;
+  --crit: #c0392b;
+  --neutral-bar: #b9b0a8;
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #17120f; --surface: #221b17; --surface-2: #2c241f; --ink: #f4eee9; --ink-2: #b3a79e;
+    --line: #3a302a; --accent: #ff7a2e; --accent-soft: #4a2a17; --accent-ink: #1b1109;
+    --good: #5cc487; --warn: #e3b04b; --crit: #ee7566; --neutral-bar: #6d625a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #17120f; --surface: #221b17; --surface-2: #2c241f; --ink: #f4eee9; --ink-2: #b3a79e;
+  --line: #3a302a; --accent: #ff7a2e; --accent-soft: #4a2a17; --accent-ink: #1b1109;
+  --good: #5cc487; --warn: #e3b04b; --crit: #ee7566; --neutral-bar: #6d625a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 40px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg); }
+.wrap { max-width: 1120px; margin: 0 auto; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header.top { padding: 28px 0 18px; display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: flex-end; justify-content: space-between; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+h1 { font-family: var(--font-display); font-size: clamp(26px, 5vw, 38px); line-height: 1.1; margin: 4px 0 0; letter-spacing: -.01em; text-wrap: balance; }
+.tag { color: var(--ink-2); margin: 6px 0 0; }
+.asof { font-size: 12px; color: var(--ink-2); text-align: right; }
+
+.monthbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); padding: 10px 0; border-bottom: 1px solid var(--line); }
+.months { display: flex; align-items: center; gap: 8px; }
+.months .nav { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; flex: none; }
+.months .nav:hover:not(:disabled) { border-color: var(--accent); }
+.months .nav:disabled { opacity: .4; cursor: default; }
+.months .nav svg { width: 18px; height: 18px; }
+.picker { position: relative; display: flex; align-items: center; flex: 0 1 280px; min-width: 0; }
+.picker .cal { position: absolute; left: 12px; width: 18px; height: 18px; color: var(--accent); pointer-events: none; }
+.picker select { width: 100%; appearance: none; -webkit-appearance: none; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 10px; height: 38px; padding: 0 34px 0 38px; font: inherit; font-weight: 600; cursor: pointer; }
+.picker select:hover { border-color: var(--accent); }
+.picker .caret { position: absolute; right: 12px; width: 16px; height: 16px; color: var(--ink-2); pointer-events: none; }
+svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ico { width: 32px; height: 32px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: none; }
+.ico svg { width: 18px; height: 18px; }
+.head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.card h3.h3i { display: flex; align-items: center; gap: 10px; }
+
+main { padding-top: 20px; display: grid; gap: 28px; }
+.section-title { font-family: var(--font-display); font-size: 17px; margin: 0 0 12px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.section-title small { font-family: var(--font-body); font-size: 12px; color: var(--ink-2); font-weight: 400; }
+
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+button.kpi { text-align: left; width: 100%; display: flex; flex-direction: column; gap: 4px; }
+button.kpi:hover { border-color: var(--accent); }
+button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.kpi .label { font-size: 12px; color: var(--ink-2); font-weight: 600; }
+.kpi .value { font-family: var(--font-display); font-size: 34px; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.kpi .value.none { color: var(--ink-2); }
+.kpi .unit { font-size: 12px; color: var(--ink-2); font-weight: 400; font-family: var(--font-body); letter-spacing: 0; margin-left: 4px; }
+.kpi .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; }
+.delta { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.delta.up::before { content: "▲ "; } .delta.down::before { content: "▼ "; }
+.spark { width: 84px; height: 28px; flex: none; }
+.spark polyline { fill: none; stroke: var(--neutral-bar); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.spark circle { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+
+.three { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.stack { display: flex; height: 14px; border-radius: 4px; overflow: hidden; gap: 2px; margin: 12px 0; }
+.stack span { display: block; min-width: 2px; }
+.legend { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; font-size: 13px; }
+.legend div { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.legend b { font-variant-numeric: tabular-nums; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 6px; }
+.note { font-size: 12px; color: var(--ink-2); margin: 10px 0 0; }
+.big { font-family: var(--font-display); font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; line-height: 1.05; }
+.cardlabel { font-size: 12px; color: var(--ink-2); font-weight: 600; margin-bottom: 6px; }
+.card h3 { font-family: var(--font-display); font-size: 15px; margin: 0 0 10px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pair .cardlabel { margin-bottom: 4px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.chips button { border: 1px solid var(--line); background: var(--surface-2); border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; }
+.chips button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+#chart { position: relative; width: 100%; }
+#chart svg { display: block; width: 100%; }
+.gridline { stroke: var(--line); stroke-width: 1; }
+.axis-t { fill: var(--ink-2); font-size: 11px; font-family: var(--font-body); }
+.bar { fill: var(--neutral-bar); }
+.bar.sel { fill: var(--accent); }
+.hit { fill: transparent; cursor: pointer; }
+.hit:hover + .bar, .hit:focus + .bar { fill: var(--accent); opacity: .8; }
+.vlabel { fill: var(--ink); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; text-anchor: middle; }
+#tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); padding: 5px 9px; border-radius: 6px; font-size: 12px; white-space: nowrap; transform: translate(-50%, -100%); opacity: 0; transition: opacity .1s; }
+
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 880px; font-variant-numeric: tabular-nums; }
+th, td { padding: 9px 12px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+thead th { font-size: 12px; color: var(--ink-2); font-weight: 600; background: var(--surface-2); }
+thead th:first-child { background: var(--surface-2); }
+td.na { color: var(--ink-2); }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: var(--surface-2); }
+tbody tr.sel td { background: var(--accent-soft); font-weight: 600; }
+tfoot td { font-weight: 700; border-bottom: 0; }
+.footer { color: var(--ink-2); font-size: 12px; }
+
+.themebtn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { #tip { transition: none; } }
+@media (max-width: 520px) { .legend { grid-template-columns: 1fr; } .asof { text-align: left; } }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Techo International Airport · ASPO</div>
+      <h1>Executive Report</h1>
+      <p class="tag">Safety is everyone's responsibility</p>
+    </div>
+    <div class="asof">
+      <div id="asof"></div>
+      <button class="themebtn" id="themebtn" type="button" style="margin-top:8px">Toggle theme</button>
+    </div>
+  </header>
+
+  <div class="monthbar"><div class="months" id="months" role="group" aria-label="Choose a period"></div></div>
+
+  <main>
+    <section>
+      <h2 class="section-title"><span>Operational safety during aerodrome works</span><small id="scope"></small></h2>
+      <div class="grid" id="works"></div>
+    </section>
+
+    <section>
+      <h2 class="section-title"><span>Airside permits</span><small id="airScope"></small></h2>
+      <div class="grid" id="airside"></div>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title"><span id="chartTitle">Monthly trend</span><small>Click a bar to open that month</small></h2>
+      <div class="chips" id="chips" role="group" aria-label="Choose a measure"></div>
+      <div id="chart"><div id="tip"></div></div>
+    </section>
+
+    <section>
+      <h2 class="section-title"><span>All months</span><small>Click a row to open that month</small></h2>
+      <div class="tablewrap"><table id="tbl"></table></div>
+    </section>
+
+    <section>
+      <h2 class="section-title"><span id="snapTitle">Report snapshot</span><small>Does not change with the month selected</small></h2>
+      <div class="three">
+        <div class="card">
+          <h3 class="h3i" id="h3permit"></h3>
+          <div class="big" id="permBig"></div>
+          <div class="cardlabel">approved permits</div>
+          <div class="stack" id="permStack" role="img" aria-label="Permit status split"></div>
+          <div class="legend" id="permLegend"></div>
+          <p class="note" id="permNote"></p>
+        </div>
+        <div class="card">
+          <h3 class="h3i" id="h3smoke"></h3>
+          <div class="pair">
+            <div><div class="cardlabel">Smoke alarm</div><div class="big" id="smokeBig"></div></div>
+            <div><div class="cardlabel">Disabled smoke detector</div><div class="big" id="disBig"></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3 class="h3i" id="h3cat"></h3>
+          <div class="pair">
+            <div><div class="cardlabel">Category 1</div><div class="big" id="cat1"></div></div>
+            <div><div class="cardlabel">Category 2</div><div class="big" id="cat2"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer" id="foot"></p>
+  </main>
+</div>
+
+<script>
+/* ===== DATA: edit here each month. Add one value per measure and one entry to MONTHS. null = not recorded. ===== */
+var REPORT = { asOf: "02-Nov-2026" };
+var MONTHS = [
+  {m:"Sep",y:2025},{m:"Oct",y:2025},{m:"Nov",y:2025},{m:"Dec",y:2025},
+  {m:"Jan",y:2026},{m:"Feb",y:2026},{m:"Mar",y:2026},{m:"Apr",y:2026},{m:"May",y:2026},{m:"Jun",y:2026},{m:"Jul",y:2026},{m:"Aug",y:2026},
+  {m:"Sep",y:2026},{m:"Oct",y:2026}
+];
+var M = {
+  adp:     [663,39,12,23,6,29,7,10,72,56,35,35,4,32],
+  kickoff: [5,13,10,12,6,35,11,16,14,14,16,6,8,9],
+  light:   [2,14,25,42,25,64,105,31,133,63,110,113,170,135],
+  notam:   [1,3,4,3,2,2,1,3,0,2,0,0,3,1],
+  avp:     [35,10,15,15,12,8,0,0,7,0,0,8,19,0],
+  permits: [null,null,null,null,null,0,null,0,14,12,20,13,13,9],
+  hot:     [null,null,null,null,null,27,null,0,null,5,52,192,261,188],
+  gse:     [null,null,null,null,null,null,null,null,null,null,null,null,17,0]
+};
+/* Snapshot from the Canva report, as of the date above (not split by month). */
+var SNAP = {
+  permits: { approved:183, expired:155, active:28, airside:25, landside:3, review:5, incomplete:5 },
+  smoke: 545, disabled: 1037, cat1: 774, cat2: 249
+};
+/* ===== end of DATA ===== */
+
+var MONTHFULL = {Sep:"September",Oct:"October",Nov:"November",Dec:"December",Jan:"January",Feb:"February",Mar:"March",Apr:"April",May:"May",Jun:"June",Jul:"July",Aug:"August"};
+var DEFS = [
+  { k:"kickoff", label:"Kick-off meeting and safety induction", short:"Kick-off", unit:"meetings", group:"works", icon:"users" },
+  { k:"notam",   label:"NOTAM request", short:"NOTAM", unit:"requests", group:"works", icon:"notice" },
+  { k:"light",   label:"Light work request", short:"Light work", unit:"requests", group:"works", icon:"wrench" },
+  { k:"hot",     label:"Hot work request", short:"Hot work", unit:"requests", group:"works", icon:"flame" },
+  { k:"permits", label:"Work permit", short:"Work permit", unit:"permits", group:"works", icon:"permit" },
+  { k:"adp",     label:"Airside driving permit", short:"Driving permit", unit:"licenses", group:"air", icon:"wheel" },
+  { k:"avp",     label:"Airside vehicle permit", short:"Vehicle permit", unit:"vehicles", group:"air", icon:"car" },
+  { k:"gse",     label:"Ground support equipment (GSE)", short:"GSE", unit:"GSE", group:"air", icon:"truck" }
+];
+var N = MONTHS.length;
+var ICONS = {
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  notice: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>',
+  wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',
+  flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  permit: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+  wheel: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2"/><path d="M12 14v8"/><path d="M10 12H2.5"/><path d="M14 12h7.5"/>',
+  car: '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
+  truck: '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+  bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  layers: '<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/>',
+  cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  left: '<path d="m15 18-6-6 6-6"/>',
+  right: '<path d="m9 18 6-6-6-6"/>',
+  down: '<path d="m6 9 6 6 6-6"/>'
+};
+function svg(name, cls){ return '<svg class="i'+(cls?' '+cls:'')+'" viewBox="0 0 24 24" aria-hidden="true">'+ICONS[name]+'</svg>'; }
+function ico(name){ return '<span class="ico">'+svg(name)+'</span>'; }
+var sel = "all", metric = "light";
+
+function mshort(i){ return MONTHS[i].m + " " + String(MONTHS[i].y).slice(2); }
+function mfull(i){ return MONTHFULL[MONTHS[i].m] + " " + MONTHS[i].y; }
+var PERIOD = mfull(0) + " to " + mfull(N-1);
+function present(v){ return v !== null && v !== undefined; }
+function nums(a){ return a.filter(present); }
+function sum(a){ return nums(a).reduce(function(x,y){return x+y;},0); }
+function val(k, s){ if (s === "all") { return nums(M[k]).length ? sum(M[k]) : null; } return M[k][s]; }
+function fmt(n){ return present(n) ? Number(n).toLocaleString("en-US") : "–"; }
+function $(id){ return document.getElementById(id); }
+function def(k){ return DEFS.filter(function(d){return d.k===k;})[0]; }
+function firstIdx(k){ for (var i=0;i<N;i++) if (present(M[k][i])) return i; return -1; }
+
+function hashFor(s){ return s === "all" ? "all" : (MONTHS[s].m + String(MONTHS[s].y).slice(2)).toLowerCase(); }
+function fromHash(){
+  var h = (location.hash||"").replace("#","").toLowerCase();
+  for (var i=0;i<N;i++) if (hashFor(i) === h) return i;
+  return "all";
+}
+function choose(s){
+  sel = s;
+  try { history.replaceState(null, "", "#" + hashFor(s)); } catch(e) { location.hash = hashFor(s); }
+  render();
+}
+
+function spark(k, s){
+  var a = M[k], w = 84, h = 28, p = 4, mx = Math.max.apply(null, nums(a).concat([1]));
+  var pts = [];
+  a.forEach(function(v,i){ if (present(v)) pts.push([i, p + i*(w-2*p)/(N-1), h-p - (v/mx)*(h-2*p)]); });
+  var line = pts.map(function(q){return q[1].toFixed(1)+","+q[2].toFixed(1);}).join(" ");
+  var dot = "";
+  if (s !== "all") pts.forEach(function(q){ if (q[0] === s) dot = '<circle cx="'+q[1].toFixed(1)+'" cy="'+q[2].toFixed(1)+'" r="4"/>'; });
+  return '<svg class="spark" viewBox="0 0 '+w+' '+h+'" aria-hidden="true"><polyline points="'+line+'"/>'+dot+'</svg>';
+}
+function deltaHtml(k, s){
+  if (s === "all") {
+    var n = nums(M[k]).length, f = firstIdx(k);
+    var t = 'Avg ' + fmt(Math.round(sum(M[k])/n)) + ' / month';
+    if (f > 0) t += ' · from ' + mshort(f);
+    return '<span class="delta">' + t + '</span>';
+  }
+  var a = M[k][s];
+  if (!present(a)) return '<span class="delta">Not recorded</span>';
+  if (s === 0) return '<span class="delta">First month</span>';
+  var b = M[k][s-1];
+  if (!present(b)) return '<span class="delta">No earlier month to compare</span>';
+  if (b === 0) return '<span class="delta">vs ' + MONTHS[s-1].m + ': 0</span>';
+  var p = Math.round((a-b)/b*100);
+  if (p === 0) return '<span class="delta">No change vs ' + MONTHS[s-1].m + '</span>';
+  return '<span class="delta ' + (p>0?'up':'down') + '">' + Math.abs(p) + '% vs ' + MONTHS[s-1].m + '</span>';
+}
+function kpi(d){
+  var v = val(d.k, sel);
+  return '<button type="button" class="card kpi" data-k="'+d.k+'" aria-pressed="'+(metric===d.k)+'">' +
+    '<span class="head">'+ico(d.icon)+'<span class="label">'+d.label+'</span></span>' +
+    '<span class="value'+(present(v)?'':' none')+'">'+fmt(v)+(present(v)?'<span class="unit">'+d.unit+'</span>':'')+'</span>' +
+    '<span class="foot">'+deltaHtml(d.k, sel)+spark(d.k, sel)+'</span></button>';
+}
+
+function renderMonths(){
+  var box = $("months");
+  if (!$("monthSel")) {
+    var opts = '<option value="all">Full period (' + mshort(0) + ' to ' + mshort(N-1) + ')</option>';
+    MONTHS.forEach(function(m,i){ opts += '<option value="'+i+'">'+mfull(i)+'</option>'; });
+    box.innerHTML = '<button type="button" class="nav" id="prevBtn" aria-label="Previous month">'+svg("left")+'</button>' +
+      '<div class="picker">'+svg("cal","cal")+'<select id="monthSel" aria-label="Choose a period">'+opts+'</select>'+svg("down","caret")+'</div>' +
+      '<button type="button" class="nav" id="nextBtn" aria-label="Next month">'+svg("right")+'</button>';
+    $("monthSel").addEventListener("change", function(){ var v = this.value; choose(v === "all" ? "all" : +v); });
+    $("prevBtn").addEventListener("click", function(){ choose(sel === "all" ? "all" : (sel === 0 ? "all" : sel-1)); });
+    $("nextBtn").addEventListener("click", function(){ choose(sel === "all" ? 0 : Math.min(N-1, sel+1)); });
+  }
+  $("monthSel").value = String(sel);
+  $("prevBtn").disabled = sel === "all";
+  $("nextBtn").disabled = sel === N-1;
+}
+
+function renderSnapshot(){
+  var P = SNAP.permits;
+  $("snapTitle").textContent = "Report snapshot as of " + REPORT.asOf;
+  $("h3permit").innerHTML = ico("permit") + "Work permit status";
+  $("h3smoke").innerHTML = ico("bell") + "Smoke alarms and detectors";
+  $("h3cat").innerHTML = ico("layers") + "Driving permit by category";
+  $("permBig").textContent = fmt(P.approved);
+  var parts = [
+    { n:"Expired", v:P.expired, c:"var(--neutral-bar)" },
+    { n:"Active", v:P.active, c:"var(--good)" },
+    { n:"In review", v:P.review, c:"var(--warn)" },
+    { n:"Incomplete", v:P.incomplete, c:"var(--crit)" }
+  ];
+  var denom = parts.reduce(function(a,p){return a+p.v;},0) || 1;
+  $("permStack").innerHTML = parts.filter(function(p){return p.v>0;}).map(function(p){
+    return '<span style="flex:'+p.v/denom+';background:'+p.c+'"></span>'; }).join("");
+  $("permLegend").innerHTML = parts.map(function(p){
+    return '<div><span><i style="background:'+p.c+'"></i>'+p.n+'</span><b>'+fmt(p.v)+'</b></div>'; }).join("");
+  $("permNote").textContent = "Active permits: " + fmt(P.airside) + " airside, " + fmt(P.landside) + " landside.";
+  $("smokeBig").textContent = fmt(SNAP.smoke);
+  $("disBig").textContent = fmt(SNAP.disabled);
+  $("cat1").textContent = fmt(SNAP.cat1);
+  $("cat2").textContent = fmt(SNAP.cat2);
+}
+
+function renderChart(){
+  var d = def(metric), box = $("chart");
+  $("chartTitle").textContent = d.label + " by month";
+  $("chips").innerHTML = DEFS.map(function(x){
+    return '<button type="button" data-k="'+x.k+'" aria-pressed="'+(metric===x.k)+'">'+x.short+'</button>'; }).join("");
+  var W = Math.max(box.clientWidth, 280), H = 250, L = 40, R = 8, T = 22, B = 40;
+  var a = M[metric], mx = Math.max.apply(null, nums(a).concat([1]));
+  var step = Math.pow(10, Math.floor(Math.log10(mx))), top = Math.ceil(mx/step)*step;
+  if (top/step < 3) { step = step/2; top = Math.ceil(mx/step)*step; }
+  var ticks = []; for (var t = 0; t <= top + 1e-9; t += step) ticks.push(t);
+  var iw = W-L-R, ih = H-T-B, cw = iw/N, bw = Math.min(34, cw*0.62), skip = cw < 26;
+  function y(v){ return T + ih - v/top*ih; }
+  var s = '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="'+d.label+' by month">';
+  ticks.forEach(function(t){
+    s += '<line class="gridline" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(t)+'" y2="'+y(t)+'"/>' +
+         '<text class="axis-t" x="'+(L-6)+'" y="'+(y(t)+4)+'" text-anchor="end">'+fmt(t)+'</text>';
+  });
+  a.forEach(function(v,i){
+    var cx = L + cw*i + cw/2, isSel = sel === i, has = present(v);
+    var bh = has ? Math.max(v/top*ih, v>0?2:0) : 0;
+    s += '<g><rect class="hit" tabindex="0" role="button" aria-label="'+mfull(i)+': '+(has?fmt(v):'not recorded')+'" data-s="'+i+'" data-v="'+(has?v:'')+'" x="'+(L+cw*i)+'" y="'+T+'" width="'+cw+'" height="'+ih+'"/>';
+    if (has) s += '<rect class="bar'+(isSel?' sel':'')+'" x="'+(cx-bw/2)+'" y="'+(T+ih-bh)+'" width="'+bw+'" height="'+bh+'" rx="3" pointer-events="none"/>';
+    else s += '<text class="axis-t" x="'+cx+'" y="'+(T+ih-4)+'" text-anchor="middle" pointer-events="none">–</text>';
+    if (isSel && has) s += '<text class="vlabel" x="'+cx+'" y="'+(T+ih-bh-6)+'">'+fmt(v)+'</text>';
+    if (!skip || i % 2 === 0 || isSel) s += '<text class="axis-t" x="'+cx+'" y="'+(H-22)+'" text-anchor="middle" style="'+(isSel?'font-weight:700;fill:var(--ink)':'')+'">'+MONTHS[i].m+'</text>';
+    if (i === 0 || MONTHS[i].y !== MONTHS[i-1].y) s += '<text class="axis-t" x="'+(L+cw*i+2)+'" y="'+(H-6)+'" style="font-weight:600">'+MONTHS[i].y+'</text>';
+    s += '</g>';
+  });
+  s += '</svg>';
+  var tip = $("tip"); tip.style.opacity = 0;
+  box.innerHTML = s; box.appendChild(tip);
+}
+
+function renderTable(){
+  var h = '<thead><tr><th>Month</th>' + DEFS.map(function(d){return '<th>'+d.short+'</th>';}).join("") + '</tr></thead><tbody>';
+  for (var i=0;i<N;i++){
+    h += '<tr data-s="'+i+'" tabindex="0" class="'+(sel===i?'sel':'')+'"><td>'+mfull(i)+'</td>' +
+      DEFS.map(function(d){ var v = M[d.k][i]; return '<td'+(present(v)?'':' class="na"')+'>'+fmt(v)+'</td>'; }).join("") + '</tr>';
+  }
+  h += '</tbody><tfoot><tr><td>Total</td>' + DEFS.map(function(d){return '<td>'+fmt(val(d.k,"all"))+'</td>';}).join("") + '</tr></tfoot>';
+  $("tbl").innerHTML = h;
+}
+
+function render(){
+  renderMonths();
+  $("asof").textContent = "Updated as of " + REPORT.asOf;
+  var label = sel === "all" ? PERIOD : mfull(sel);
+  $("scope").textContent = label;
+  $("airScope").textContent = label;
+  $("works").innerHTML = DEFS.filter(function(d){return d.group==="works";}).map(kpi).join("");
+  $("airside").innerHTML = DEFS.filter(function(d){return d.group==="air";}).map(kpi).join("");
+  renderChart();
+  renderTable();
+  renderSnapshot();
+  $("foot").textContent = "Monthly figures cover " + PERIOD + ". A dash means the measure was not recorded that month and is left out of totals and averages.";
+}
+
+document.addEventListener("click", function(e){
+  var b = e.target.closest("[data-s],[data-k]");
+  if (!b) return;
+  if (b.hasAttribute("data-s") && (b.closest("#chart") || b.closest("#tbl"))) {
+    var v = b.getAttribute("data-s"); choose(v === "all" ? "all" : +v); return;
+  }
+  if (b.hasAttribute("data-k")) { metric = b.getAttribute("data-k"); render(); }
+});
+document.addEventListener("keydown", function(e){
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches("tr[data-s]")) { e.preventDefault(); choose(+e.target.getAttribute("data-s")); }
+});
+$("chart").addEventListener("mousemove", function(e){
+  var r = e.target.closest ? e.target.closest(".hit") : null, tip = $("tip");
+  if (!r) { tip.style.opacity = 0; return; }
+  var box = $("chart").getBoundingClientRect(), rb = r.getBoundingClientRect(), v = r.getAttribute("data-v");
+  tip.textContent = mfull(+r.getAttribute("data-s")) + ": " + (v === "" ? "not recorded" : fmt(v) + " " + def(metric).unit);
+  tip.style.left = (rb.left + rb.width/2 - box.left) + "px";
+  tip.style.top = Math.max(18, e.clientY - box.top - 8) + "px";
+  tip.style.opacity = 1;
+});
+$("chart").addEventListener("mouseleave", function(){ $("tip").style.opacity = 0; });
+window.addEventListener("hashchange", function(){ sel = fromHash(); render(); });
+var rt; window.addEventListener("resize", function(){ clearTimeout(rt); rt = setTimeout(renderChart, 120); });
+$("themebtn").addEventListener("click", function(){
+  var root = document.documentElement, cur = root.getAttribute("data-theme");
+  var dark = cur ? cur === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  root.setAttribute("data-theme", dark ? "light" : "dark");
+});
+
+sel = fromHash();
+render();
+</script>
+
+</html>

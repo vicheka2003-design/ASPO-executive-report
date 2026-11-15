@@ -22,7 +22,7 @@
   --good: #2f7d4f;
   --warn: #b7791f;
   --crit: #c0392b;
-  --neutral-bar: #b9b0a8;
+  --neutral-bar: #b9b0a8; --link: #1a5fb4;
   --s1: #e8590c; --s2: #2c6fbb; --s3: #1f8a7a; --s4: #b9b0a8;
   --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
   --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
@@ -31,14 +31,14 @@
   :root:not([data-theme="light"]) {
     --bg: #17120f; --surface: #221b17; --surface-2: #2c241f; --ink: #f4eee9; --ink-2: #b3a79e;
     --line: #3a302a; --accent: #ff7a2e; --accent-soft: #4a2a17; --accent-ink: #1b1109;
-    --good: #5cc487; --warn: #e3b04b; --crit: #ee7566; --neutral-bar: #6d625a; --s1: #ff7a2e; --s2: #6aa8ee; --s3: #4fc3ae; --s4: #6d625a;
+    --good: #5cc487; --warn: #e3b04b; --crit: #ee7566; --neutral-bar: #6d625a; --link: #7aa7f0; --s1: #ff7a2e; --s2: #6aa8ee; --s3: #4fc3ae; --s4: #6d625a;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #17120f; --surface: #221b17; --surface-2: #2c241f; --ink: #f4eee9; --ink-2: #b3a79e;
   --line: #3a302a; --accent: #ff7a2e; --accent-soft: #4a2a17; --accent-ink: #1b1109;
-  --good: #5cc487; --warn: #e3b04b; --crit: #ee7566; --neutral-bar: #6d625a; --s1: #ff7a2e; --s2: #6aa8ee; --s3: #4fc3ae; --s4: #6d625a;
+  --good: #5cc487; --warn: #e3b04b; --crit: #ee7566; --neutral-bar: #6d625a; --link: #7aa7f0; --s1: #ff7a2e; --s2: #6aa8ee; --s3: #4fc3ae; --s4: #6d625a;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -79,7 +79,8 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
 .head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .card h3.h3i { display: flex; align-items: center; gap: 10px; }
 
-main { padding-top: 20px; display: grid; gap: 28px; }
+main { padding-top: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+main > * { min-width: 0; }
 .section-title { font-family: var(--font-display); font-size: 17px; margin: 0 0 12px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .section-title small { font-family: var(--font-body); font-size: 12px; color: var(--ink-2); font-weight: 400; }
 
@@ -160,6 +161,12 @@ body.error .monthbar, body.error main, body.error #asof, body.error #src { displ
 .spin { width: 36px; height: 36px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: sp .8s linear infinite; }
 @keyframes sp { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }
+.sigfoot { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; margin-top: 8px; padding-top: 24px; border-top: 1px solid var(--line); }
+.sigfoot img { width: 96px; height: 96px; border-radius: 50%; flex: none; display: block; }
+.sigfoot address { font-style: normal; font-size: 14px; line-height: 1.7; color: var(--ink-2); min-width: 0; flex: 1 1 260px; overflow-wrap: anywhere; }
+.sigfoot .org { color: var(--ink); font-weight: 700; font-size: 16px; font-family: var(--font-display); }
+.sigfoot a { color: var(--link); text-decoration: none; }
+.sigfoot a:hover { text-decoration: underline; }
 .themebtn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { #tip { transition: none; } }
 @media (max-width: 520px) { .legend { grid-template-columns: 1fr; } .asof { text-align: left; } }
@@ -238,6 +245,19 @@ body.error .monthbar, body.error main, body.error #asof, body.error #src { displ
     </section>
 
     <p class="footer" id="foot"></p>
+
+    <footer class="sigfoot">
+      <img id="footLogo" alt="SSD logo" width="96" height="96">
+      <address>
+        <div class="org">Airport Safety Permit Office (ASPO) - SS Department</div>
+        <div>Airport Permit Control Officer</div>
+        <div>Techo International Airport (KTI/VDTI)</div>
+        <div>P.O. Box 1256 - Samdach Techo Hun Sen Blvd | KTI Headhouse-Mezzanine Level Zero, Phnom Penh | Kingdom of Cambodia</div>
+        <div>Tel.: <a href="tel:+85523898989">+855 (0)23 89 89 89</a> | Mob.: <a href="tel:+85570329190">+855 (0) 70 329 190</a></div>
+        <div><a href="mailto:kti.aspo@cambodia-airports.aero">kti.aspo@cambodia-airports.aero</a></div>
+        <div><a href="https://www.cambodia-airports.aero" target="_blank" rel="noopener">www.cambodia-airports.aero</a></div>
+      </address>
+    </footer>
   </main>
 </div>
 
@@ -663,6 +683,7 @@ $("themebtn").addEventListener("click", function(){
   root.setAttribute("data-theme", dark ? "light" : "dark");
 });
 
+(function(){var a=document.querySelector(".logo"),b=document.getElementById("footLogo");if(a&&b)b.src=a.src;})();
 function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 function setState(st, msg){
   document.body.className = st === "ok" ? "" : st;
